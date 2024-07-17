@@ -119,6 +119,27 @@ app.delete('/api/persons/:id', (request, response) => {
   response.status(204).end()
 })
 
+app.put('/api/persons/:id', (request, response) => {
+  const body = request.body
+  if (!body.name) {
+    return response.status(404)
+    .json({
+      error: 'put request name missing'
+    })
+  }
+
+  const id = body.id
+
+  const updatedPerson = {
+    id: id,
+    name: body.name,
+    number: body.number
+  }
+
+  persons = persons.map(p => p.id !== id ? p : updatedPerson)
+  response.json(updatedPerson)
+})
+
 app.use(unknownEndpoint)
 
 const PORT = process.env.PORT || 3001
