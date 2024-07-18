@@ -1,7 +1,12 @@
 const express = require('express')
-const app = express()
 const morgan = require('morgan')
 const cors = require('cors')
+const mongoose = require('mongoose')
+const dotenv = require('dotenv').config()
+
+const Person = require('./models/person')
+
+const app = express()
 
 app.use(express.json())
 app.use(cors())
@@ -14,29 +19,6 @@ morgan.token('body', (req) => {
 
 app.use(morgan(':method :url :response-time :body'))
 app.use(express.static('dist'))
-
-let persons = [
-  { 
-    "id": "1",
-    "name": "Arto Hellas", 
-    "number": "040-123456"
-  },
-  { 
-    "id": "2",
-    "name": "Ada Lovelace", 
-    "number": "39-44-5323523"
-  },
-  { 
-    "id": "3",
-    "name": "Dan Abramov", 
-    "number": "12-43-234345"
-  },
-  { 
-    "id": "4",
-    "name": "Mary Poppendieck", 
-    "number": "39-23-6423122"
-  }
-]
 
 const unknownEndpoint = (request, response) => {
   response.status(404).send({ error: 'unknown endpoint' })
@@ -56,18 +38,17 @@ app.get('/info', (request, response) => {
     `)
 })
 
+
 app.get('/api/persons', (request, response) => {
-  response.json(persons)
+  Person.find({}).then(persons => {
+    response.json(persons)
+  })
 })
 
 app.get('/api/persons/:id', (request, response) => {
-  const id = request.params.id
-  const person = persons.find(p => p.id === id)
-  if (person) {
+  Person.findById(request.params.id).then(person => {
     response.json(person)
-  } else {
-    response.status(404).end()
-  }
+  })
 })
 
 const generateId = () => {
@@ -81,36 +62,23 @@ const generateId = () => {
   return String(id)
 }
 
-const personExists = (person) => {
-  return persons.find(p => p.name === person.name)
-}
-
 app.post('/api/persons/', (request, response) => {
   const body = request.body
-  if (!body.name) {
-    return response.status(404)
-    .json({
-      error: 'name missing'
-    })
+  console.log('request body is: ', body)
+  if (body.name === undefined) {
+    return response
+      .status(404)
+      .json({ error: 'name is missing' })
   }
 
-  const randomId = generateId()
-
-  const person = {
-    id: randomId,
+  const person = new Person({
     name: body.name,
-    number: body.number
-  }
+    number: body.number || ''
+  })
 
-  if (personExists(person)) {
-    return response.status(409)
-    .json({
-      error: 'name must be unique'
-    })
-  } else {
-    persons = persons.concat(person)
-    response.json(person)
-  }
+  person.save().then(savedPerson => {
+    response.json(savedPerson)
+  })  
 })
 
 app.delete('/api/persons/:id', (request, response) => {
